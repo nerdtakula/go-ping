@@ -278,7 +278,6 @@ func (p *Pinger) run() error {
 	var wg sync.WaitGroup
 	recv := make(chan *packet, 5)
 	wg.Add(1)
-	fmt.Println("sending ICMP message")
 	go p.recvICMP(conn, recv, &wg)
 
 	err = p.sendICMP(conn)
@@ -304,7 +303,6 @@ func (p *Pinger) run() error {
 			wg.Wait()
 			return nil
 		case <-interval.C:
-			fmt.Println("sending ICMP message")
 			err = p.sendICMP(conn)
 			if err != nil {
 				return err
@@ -316,7 +314,6 @@ func (p *Pinger) run() error {
 			}
 		default:
 			if p.Count > 0 && p.PacketsRecv >= p.Count {
-				fmt.Println("Done sending ICMP messages")
 				close(p.done)
 				wg.Wait()
 				return nil
