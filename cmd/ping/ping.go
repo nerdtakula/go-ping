@@ -3,6 +3,10 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
+	"os"
+	"runtime"
+	"runtime/pprof"
 	"time"
 
 	"github.com/sparrc/go-ping"
@@ -31,11 +35,16 @@ Examples:
     sudo ping --privileged www.google.com
 `
 
+var (
+	timeout    = flag.Duration("t", time.Second*100000, "")
+	interval   = flag.Duration("i", time.Second, "")
+	count      = flag.Int("c", -1, "")
+	privileged = flag.Bool("privileged", false, "")
+	cpuprofile = flag.String("cpuprofile", "", "write cpu profile to `file`")
+	memprofile = flag.String("memprofile", "", "write memory profile to `file`")
+)
+
 func main() {
-	timeout := flag.Duration("t", time.Second*100000, "")
-	interval := flag.Duration("i", time.Second, "")
-	count := flag.Int("c", -1, "")
-	privileged := flag.Bool("privileged", false, "")
 	flag.Usage = func() {
 		fmt.Printf(usage)
 	}
@@ -44,6 +53,17 @@ func main() {
 	if flag.NArg() == 0 {
 		flag.Usage()
 		return
+	}
+
+	if *cpuprofile != "" {
+		f, err := os.Create(*cpuprofile)
+		if err != nil {
+			log.Fatal("could not create CPU profile: ", err)
+		}
+		if err := pprof.StartCPUProfile(f); err != nil {
+			log.Fatal("could not start CPU profile: ", err)
+		}
+		defer pprof.StopCPUProfile()
 	}
 
 	host := flag.Arg(0)
@@ -72,4 +92,16 @@ func main() {
 
 	fmt.Printf("PING %s (%s):\n", pinger.Addr(), pinger.IPAddr())
 	pinger.Run()
+
+	if *memprofile != "" {
+		f, err := os.Create(*memprofile)
+		if err != nil {
+			log.Fatal("could not create memory profile: ", err)
+		}
+		runtime.GC() // get up-to-date statistics
+		if err := pprof.WriteHeapProfile(f); err != nil {
+			log.Fatal("could not write memory profile: ", err)
+		}
+		f.Close()
+	}
 }
